@@ -12,10 +12,10 @@ public class Entity{
       int id;
       int input_UDP = 4343;
       int input_TCP = 4344;
-      InetAddress next_address;
-      int next_input_UDP;
+      InetAddress next_address = (Inet4Address) InetAddress.getByName("127.0.0.1");
+      int next_input_UDP = 4343;
       //mulitcast sur l'adresse pour restreindre le message uniquement à la meme adresse
-      Inet4Address emergency_address;
+      Inet4Address emergency_address = (Inet4Address) InetAddress.getByName("127.0.0.1");
       int emergency_UDP = 4345;
       if(args.length!=6 && args.length!=4){
         System.out.println("java Entity port_UDP port_TCP [next_address] [next_port_UDP] emergency_address emergency_UDP");
@@ -43,7 +43,7 @@ public class Entity{
         emergency_address = (Inet4Address) InetAddress.getByName(args[2]);
         emergency_UDP = Integer.parseInt(args[3]);
       } else {
-        System.out.println("java Entity input_UDP input_TCP");
+        System.out.println("java Entity port_UDP port_TCP [next_address] [next_port_UDP] emergency_address emergency_UDP");
       }
       Selector sel=Selector.open();
       //--------------connexion en udp non bloquante----------------------------
@@ -63,7 +63,7 @@ public class Entity{
       tcp_in.register(sel, SelectionKey.OP_ACCEPT);
 
       ByteBuffer buff=ByteBuffer.allocate(100);
-      //---------------boucle en attente d'une action---------------------------
+      //---------------boucle d'attente d'une action---------------------------
       while(true){
         System.out.println("Waiting for messages");
         sel.select();
@@ -91,15 +91,26 @@ public class Entity{
   					PrintWriter comPW = new PrintWriter(
   							new OutputStreamWriter(
   									comSock.getOutputStream()));
-            String st = comBR.readLine();
-            /*
-            tcp_in.receive(buff);
-            String st=new String(buff.array(),0,buff.array().length);
-            buff.clear();*/
+            /*String st = comBR.readLine();
             System.out.println("Message input_TCP recu");
             System.out.println("Message :"+st);
             comPW.println("Message recu!");
-  					comPW.flush();
+  					comPW.flush();*/
+            String welc = "WELC "+next_input_UDP+" "+next_address+" "+emergency_UDP+" "+emergency_address;
+            comPW.println(welc);
+            comPW.flush();
+            String st = comBR.readLine();
+            String[] parts = st.split(" ");
+            if((parts[0]).equals("NEWC")){
+              next_input_UDP = Integer.parseInt(parts[1]);
+              next_address = (Inet4Address) InetAddress.getByName(parts[2]);
+              comPW.println("ACK");
+              comPW.flush();
+            } else {
+              comPW.println("Message NEWC non conforme recommencez la procédure.");
+              comPW.flush();
+            }
+            //------------------close communication-----------------------------
             comBR.close();
   					comPW.close();
   					comSock.close();
