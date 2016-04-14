@@ -1,8 +1,10 @@
 import java.net.*;
 import java.io.*;
+import java.nio.*;
 import java.util.*;
 import java.util.Scanner;
 import java.nio.ByteBuffer;
+import java.net.StandardSocketOptions;
 import java.nio.channels.*;
 
 public class Entity{
@@ -94,11 +96,18 @@ public class Entity{
       udp_in.configureBlocking(false);
       udp_in.bind(new InetSocketAddress(input_UDP));
       udp_in.register(sel,SelectionKey.OP_READ);
-      //-----connexion en udp au port emercy non bloquante ---------------------
-      /*DatagramChannel udp_emergency=DatagramChannel.open();
+      //-----------------multicast non bloquant---------------------------------
+      //revoir l'interface de connexion
+      //faire une focntion qui parcours les interfaces active et en selectionne une??
+      NetworkInterface interf = NetworkInterface.getByName("wlan0");
+      InetAddress group = emergency_address;
+      DatagramChannel udp_emergency = DatagramChannel.open()
+      .setOption(StandardSocketOptions.SO_REUSEADDR, true)
+      .bind(new InetSocketAddress(emergency_UDP))
+      .setOption(StandardSocketOptions.IP_MULTICAST_IF, interf);
       udp_emergency.configureBlocking(false);
-      udp_emergency.bind(new InetSocketAddress(emergency_UDP));
-      udp_emergency.register(sel,SelectionKey.OP_READ);*/
+      udp_emergency.register(sel, SelectionKey.OP_READ);
+      udp_emergency.join(group, interf);
       //-------------connexion en tcp non bloquante-----------------------------
       ServerSocketChannel tcp_in = ServerSocketChannel.open();
       tcp_in.configureBlocking(false);
@@ -121,13 +130,13 @@ public class Entity{
             String st=new String(buff.array(),0,buff.array().length);
             buff.clear();
             System.out.println("Message :"+st);
-          } /*else if (sk.isReadable() && sk.channel()==udp_emergency){
+          } else if (sk.isReadable() && sk.channel()==udp_emergency){
             System.out.println("Message emergency_UDP recu");
             udp_emergency.receive(buff);
             String st=new String(buff.array(),0,buff.array().length);
             buff.clear();
             System.out.println("Message :"+st);
-          } */else if (sk.isAcceptable() && sk.channel()==tcp_in){
+          } else if (sk.isAcceptable() && sk.channel()==tcp_in){
             Socket comSock = (tcp_in.accept()).socket();
             BufferedReader comBR = new BufferedReader(
   							new InputStreamReader(
