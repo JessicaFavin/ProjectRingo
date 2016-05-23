@@ -36,9 +36,33 @@ public class Entity{
       return Appli.DIFF;
     } else if(appli.equals("PENDU")) {
       return Appli.PENDU;
+    } else if(appli.equals("GEST")) {
+      return Appli.GEST;
     }
 
     return Appli.NONE;
+  }
+
+  private static BufferedReader getBR(Socket comSock){
+    BufferedReader br = null;
+    try{
+      br = new BufferedReader(new InputStreamReader(comSock.getInputStream()));
+    } catch (Exception e){
+      System.out.println(e);
+      e.printStackTrace();
+    }
+    return br;
+  }
+
+  private static PrintWriter getPW(Socket comSock){
+    PrintWriter pw = null;
+    try{
+      pw = new PrintWriter(new OutputStreamWriter(comSock.getOutputStream()));
+    } catch (Exception e){
+      System.out.println(e);
+      e.printStackTrace();
+    }
+    return pw;
   }
 
   public static void main(String[] args) {
@@ -55,7 +79,10 @@ public class Entity{
       Debug debug = new Debug(false);
       if(args.length==1 && (args[0].equals("-d")||args[0].equals("--debug"))){
         debug.activate();
+        debug.display("Debug is activated");
       }
+        debug.display("Debug is not activated");
+
       //-------------------begin entity---------------------------------
       System.out.println("Create new ring (C port_UDP port_TCP emergency_address emergency_UDP application_TCP) ");
       System.out.println("or join one (J port_UDP port_TCP address_entity insertion_entity_TCP application_TCP) ?");
@@ -76,12 +103,8 @@ public class Entity{
         appli_TCP =  Integer.parseInt(init[5]);
         debug.display("Connecting int TCP to entity");
         Socket tmp_sock = new Socket(entity_address, entity_TCP);
-				BufferedReader br = new BufferedReader(
-				new InputStreamReader(
-				tmp_sock.getInputStream()));
-				PrintWriter pw = new PrintWriter(
-				new OutputStreamWriter(
-				tmp_sock.getOutputStream()));
+				BufferedReader br = getBR(tmp_sock);
+				PrintWriter pw = getPW(tmp_sock);
         debug.display("Connected to entity");
         //reads welcome message
 				String conf = br.readLine();
@@ -170,6 +193,18 @@ public class Entity{
             //doit sauvegarder la comSock en dehors du while
             // dans la fonction check if QUIT to close comSock and put
             //active appli to none again
+            if(appli_received.equals(appli_active)){
+              if(appli_active==Appli.TRANS){
+                debug.display("Transfert de fichier is running");
+              }
+              if(appli_active==Appli.PENDU){
+                debug.display("Pendu is running");
+              }
+              if(appli_active==Appli.GEST){
+                //do shit
+                debug.display("Gestion protocole is running");
+              }
+            }
 
             //tcp readable pour lire ok a chaque fois et quit a la fin de l'appli
 
@@ -196,12 +231,8 @@ public class Entity{
           //--------------------Ring input_TCP--------------------
           } else if (sk.isAcceptable() && sk.channel()==tcp_in){
             Socket comSock = (tcp_in.accept()).socket();
-            BufferedReader comBR = new BufferedReader(
-  							new InputStreamReader(
-  									comSock.getInputStream()));
-  					PrintWriter comPW = new PrintWriter(
-  							new OutputStreamWriter(
-  									comSock.getOutputStream()));
+            BufferedReader comBR = getBR(comSock);
+  					PrintWriter comPW = getPW(comSock);
             String welc = "WELC "+ring_one.getUdpNext()+" "+formatAddress(ring_one.getAddressNext())
               +" "+ring_one.getUdpMult()+" "+formatAddress(ring_one.getAddressMult());
             comPW.println(welc);
@@ -223,12 +254,8 @@ public class Entity{
           //------------------------Ring application TCP------------------------
           } else if (sk.isAcceptable() && sk.channel()==tcp_appli){
             Socket comSock = (tcp_appli.accept()).socket();
-            BufferedReader comBR = new BufferedReader(
-  							new InputStreamReader(
-  									comSock.getInputStream()));
-  					PrintWriter comPW = new PrintWriter(
-  							new OutputStreamWriter(
-  									comSock.getOutputStream()));
+            BufferedReader comBR = getBR(comSock);
+  					PrintWriter comPW = getPW(comSock);
             System.out.println("Application connected!");
             //reads initial message and sends it to the ring
             String s = comBR.readLine();
