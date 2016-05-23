@@ -26,7 +26,7 @@ public class Diff{
       new OutputStreamWriter(
       sock.getOutputStream()));
       //sends message to be diffused to the ring
-      pw.println(mess);
+      pw.print(mess);
       pw.flush();
     } catch(Exception e){
       System.out.println(e);
