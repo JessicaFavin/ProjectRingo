@@ -147,7 +147,7 @@ public class Entity{
         if(welc[0].equals("WELC")&&welc.length==5){
           debug.display(welc[1]+" "+welc[2]);
           //init ring
-          ring_one.init_ring(init[1], init[2], welc[3], welc[4], welc[1], welc[2]);
+          ring_one.init_ring(init[1], init[2], welc[4], welc[3], welc[2], welc[1]);
           Inet4Address self_address = (Inet4Address) InetAddress.getByName(Entity.getAddress());
           debug.display("Self address : "+self_address);
           conf = "NEWC "+ring_one.getUdpIn()+" "+formatAddress(self_address);
