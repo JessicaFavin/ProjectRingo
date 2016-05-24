@@ -26,7 +26,19 @@ public class Entity{
 
   private static String formatAddress(Inet4Address address){
     //à revoir pour coder l'adresse sur 15 octets!!!!
-    return address.toString().replaceAll("/","");
+    String adr = address.toString().replaceAll("/","");
+    String[] parts = adr.split("\\.");
+    int count;
+    for(int i =0; i<parts.length; i++){
+      count = 3-parts[i].length();
+      String tmp = parts[i];
+      parts[i]="";
+      for(int j=0; j<count; j++){
+        parts[i] = parts[i]+"0";
+      }
+      parts[i]+=tmp;
+    }
+    return String.join(".", parts[0], parts[1], parts[2], parts[3]);
   }
 
   private static Appli appliOf(String appli){
@@ -65,6 +77,25 @@ public class Entity{
     return pw;
   }
 
+    public static String getAddress() {
+    try {
+      Enumeration<NetworkInterface> listNi = NetworkInterface.getNetworkInterfaces();
+      while (listNi.hasMoreElements()) {
+        NetworkInterface nic = listNi.nextElement();
+        Enumeration<InetAddress> listIa = nic.getInetAddresses();
+        InetAddress iac = null;
+        while (listIa.hasMoreElements())
+          iac = listIa.nextElement();
+
+        return iac.getHostAddress();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    return null;
+  }
+
   public static void main(String[] args) {
     try{
       int id = 0;
@@ -77,11 +108,11 @@ public class Entity{
       String message_appli = "";
 
       Debug debug = new Debug(false);
+
       if(args.length==1 && (args[0].equals("-d")||args[0].equals("--debug"))){
         debug.activate();
         debug.display("Debug is activated");
       }
-        debug.display("Debug is not activated");
 
       //-------------------begin entity---------------------------------
       System.out.println("Create new ring (C port_UDP port_TCP emergency_address emergency_UDP application_TCP) ");
@@ -94,8 +125,11 @@ public class Entity{
         id = Integer.parseInt(init[1]);
         ring_one.init_self_ring(init[1], init[2], init[4], init[3]);
         appli_TCP =  Integer.parseInt(init[5]);
+        Inet4Address self_address = ring_one.getAddressNext();
+        debug.display("Self address : "+self_address);
         System.out.println("All infos received. Creating the ring now!");
       } else if(init[0].equals("J")&&init.length==6){
+        //----------------------------------------revoir les indices (inversion ip port)-----------------------------------------------------
         //id is the udp port for now
         id = Integer.parseInt(init[1]);
         InetAddress entity_address = (Inet4Address) InetAddress.getByName(init[3]);
@@ -114,7 +148,8 @@ public class Entity{
           debug.display(welc[1]+" "+welc[2]);
           //init ring
           ring_one.init_ring(init[1], init[2], welc[3], welc[4], welc[1], welc[2]);
-          Inet4Address self_address = (Inet4Address) InetAddress.getByName(Inet4Address.getLocalHost().getHostAddress());
+          Inet4Address self_address = (Inet4Address) InetAddress.getByName(Entity.getAddress());
+          debug.display("Self address : "+self_address);
           conf = "NEWC "+ring_one.getUdpIn()+" "+formatAddress(self_address);
   				pw.println(conf);
   				pw.flush();
@@ -123,7 +158,7 @@ public class Entity{
 					System.exit(1);
         }
 				conf = br.readLine();
-				if(!conf.equals("ACK")){
+				if(!conf.equals("ACKC")){
 					System.out.println("The other one is acting weird on ACK. I'm out of here!");
 					System.exit(1);
 				}
@@ -146,7 +181,7 @@ public class Entity{
       //revoir l'interface de connexion
       //faire une fonction qui parcours les interfaces active et en selectionne une??
       //NetworkInterface.getNetworkInterface().nextElement();
-      NetworkInterface interf = NetworkInterface.getByName("wlan0");
+      NetworkInterface interf = NetworkInterface.getNetworkInterfaces().nextElement();
       InetAddress group = ring_one.getAddressMult();
       DatagramChannel udp_emergency = DatagramChannel.open()
       .setOption(StandardSocketOptions.SO_REUSEADDR, true)
@@ -184,7 +219,7 @@ public class Entity{
             buff = ByteBuffer.allocate(100);
             String[] parts = st.split(" ", 5);
             System.out.println(st);
-            Integer idm_received = Integer.parseInt(parts[1]);
+            String idm_received = parts[1];
             Appli appli_received = appliOf(parts[2].replaceAll("#", ""));
 
             //if appli active est la meme que l'appli recu activate communication
@@ -233,16 +268,18 @@ public class Entity{
             Socket comSock = (tcp_in.accept()).socket();
             BufferedReader comBR = getBR(comSock);
   					PrintWriter comPW = getPW(comSock);
-            String welc = "WELC "+ring_one.getUdpNext()+" "+formatAddress(ring_one.getAddressNext())
-              +" "+ring_one.getUdpMult()+" "+formatAddress(ring_one.getAddressMult());
+            String welc = "WELC "+formatAddress(ring_one.getAddressNext())+" "+ring_one.getUdpNext()
+              +" "+formatAddress(ring_one.getAddressMult())+" "+ring_one.getUdpMult();
+              debug.display(welc);
             comPW.println(welc);
             comPW.flush();
             String st = comBR.readLine();
             String[] parts = st.split(" ");
             if((parts[0]).equals("NEWC")){
-              ring_one.insertion(parts[1], parts[2]);
-              comPW.println("ACK");
+              ring_one.insertion(parts[2], parts[1]);
+              comPW.println("ACKC");
               comPW.flush();
+              debug.display("Entiy inserted");
             } else {
               comPW.println("Message NEWC non conforme recommencez la procédure d'insertion.");
               comPW.flush();
@@ -260,7 +297,7 @@ public class Entity{
             //reads initial message and sends it to the ring
             String s = comBR.readLine();
             String [] parts = s.split(" ", 3);
-            int idm_received = Integer.parseInt(parts[1]);
+            String idm_received = parts[1];
             ring_one.getMessageList().add(idm_received);
             //remettre appli_active a none à la fermeture de la connexion!
             appli_active = appliOf(parts[2].replaceAll("#", ""));

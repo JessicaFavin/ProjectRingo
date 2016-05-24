@@ -11,7 +11,7 @@ public class RingInfo{
   private Inet4Address address_mult;
   private int udp_next;
   private Inet4Address address_next;
-  private ArrayList<Integer> message_list;
+  private ArrayList<String> message_list;
   private boolean initiated;
 
   public RingInfo(){
@@ -22,7 +22,7 @@ public class RingInfo{
       this.address_mult = (Inet4Address) InetAddress.getByName("0.0.0.0");
       this.udp_next = 0;
       this.address_next = (Inet4Address) InetAddress.getByName("0.0.0.0");
-      this.message_list = new ArrayList<Integer>();
+      this.message_list = new ArrayList<String>();
       this.initiated = false;
     } catch (Exception e){
       System.out.println(e);
@@ -38,7 +38,7 @@ public class RingInfo{
     this.address_mult = address_mult;
     this.udp_next = udp_next;
     this.address_next = address_next;
-    this.message_list = new ArrayList<Integer>();
+    this.message_list = new ArrayList<String>();
     this.initiated = true;
   }
 
@@ -51,7 +51,7 @@ public class RingInfo{
       this.address_mult = (Inet4Address) InetAddress.getByName(address_mult);
       this.udp_next = Integer.parseInt(udp_next);
       this.address_next = (Inet4Address) InetAddress.getByName(address_next);
-      this.message_list = new ArrayList<Integer>();
+      this.message_list = new ArrayList<String>();
       this.initiated = true;
     } catch (Exception e){
       System.out.println(e);
@@ -68,8 +68,8 @@ public class RingInfo{
       this.address_mult = (Inet4Address) InetAddress.getByName(address_mult);
       //next entity is self
       this.udp_next = this.udp_in;
-      this.address_next = (Inet4Address) InetAddress.getByName(Inet4Address.getLocalHost().getHostAddress());;
-      this.message_list = new ArrayList<Integer>();
+      this.address_next = (Inet4Address) InetAddress.getByName(Entity.getAddress());
+      this.message_list = new ArrayList<String>();
       this.initiated = true;
     } catch (Exception e){
       System.out.println(e);
@@ -111,7 +111,7 @@ public class RingInfo{
     return address_next;
   }
 
-  public ArrayList<Integer> getMessageList(){
+  public ArrayList<String> getMessageList(){
     return message_list;
   }
 
