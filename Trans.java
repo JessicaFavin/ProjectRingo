@@ -10,7 +10,7 @@ public class Trans{
     int num_parts = 0;
     String[] file_parts;
     try {
-      System.out.println("entity_address entity_app_port file_needed UDP_port");
+      System.out.println("entity_address entity_app_port file_needed");
       Scanner sc = new Scanner(System.in);
       String response = sc.nextLine();
       //construction du message de l'application
@@ -35,15 +35,12 @@ public class Trans{
       Inet4Address entity_address = (Inet4Address) InetAddress.getByName(parts[0]);;
       int entity_TCP = Integer.parseInt(parts[1]);
       Socket sock = new Socket(entity_address, entity_TCP);
-      BufferedReader br = new BufferedReader(
-      new InputStreamReader(
-      sock.getInputStream()));
       PrintWriter pw = new PrintWriter(
       new OutputStreamWriter(
       sock.getOutputStream()));
       pw.print(mess);
       pw.flush();
-      //waits for answer
+      /*//waits for answer
       response = br.readLine();
       parts = response.split("");
       //if file found
@@ -56,6 +53,7 @@ public class Trans{
           System.out.println("prout");
         }
       }
+      */
       //quit shit
     } catch(Exception e){
       System.out.println(e);

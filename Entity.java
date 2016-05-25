@@ -7,6 +7,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.net.StandardSocketOptions;
 import java.nio.channels.*;
+import java.io.File;
+import java.net.*;
+import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
 
 public class Entity{
 
@@ -17,11 +23,39 @@ public class Entity{
   }
 
   private static boolean got_file(String filename){
-    File f = new File("./shared/"+filename);
-    if(f.exists() && f.isFile()) {
+    String current = System.getProperty("user.dir");
+    File f = new File(current+"/shared/"+(filename.trim()));
+    if(f==null){
+    }else{
+      if(f.exists()) {
         return true;
+      }
     }
     return false;
+  }
+
+  private static String getNbMessFile(String filename){
+    try{
+      Path path = Paths.get("./shared/"+(filename.trim()));
+      byte[] fileArray = Files.readAllBytes(path);
+      return formatInt(fileArray.length/463, 8);
+    } catch (Exception e){
+      System.out.println(e);
+      e.printStackTrace();
+    }
+    return null;
+  }
+
+  private static String formatInt(int i, int max) throws Exception{
+    String res = Integer.toString(i);
+    while(res.length()<max){
+      res = "0"+res;
+    }
+    if(res.length()>max){
+      throw new Exception("Int is bigger than expected");
+    }
+
+    return res;
   }
 
   private static String formatAddress(Inet4Address address){
@@ -96,6 +130,13 @@ public class Entity{
     return null;
   }
 
+  private static byte[] concatenateByteArrays(byte[] a, byte[] b) {
+    byte[] result = new byte[a.length + b.length]; 
+    System.arraycopy(a, 0, result, 0, a.length); 
+    System.arraycopy(b, 0, result, a.length, b.length); 
+    return result;
+} 
+
   public static void main(String[] args) {
     try{
       int id = 0;
@@ -105,8 +146,7 @@ public class Entity{
       RingInfo ring_one = new RingInfo();
       RingInfo ring_two = new RingInfo();
       Appli appli_active = Appli.NONE;
-      String message_appli = "";
-
+      TransInfo trans = null;
       Debug debug = new Debug(false);
 
       if(args.length==1 && (args[0].equals("-d")||args[0].equals("--debug"))){
@@ -129,7 +169,6 @@ public class Entity{
         debug.display("Self address : "+self_address);
         System.out.println("All infos received. Creating the ring now!");
       } else if(init[0].equals("J")&&init.length==6){
-        //----------------------------------------revoir les indices (inversion ip port)-----------------------------------------------------
         //id is the udp port for now
         id = Integer.parseInt(init[1]);
         InetAddress entity_address = (Inet4Address) InetAddress.getByName(init[3]);
@@ -177,10 +216,8 @@ public class Entity{
       udp_in.configureBlocking(false);
       udp_in.bind(new InetSocketAddress(ring_one.getUdpIn()));
       udp_in.register(sel,SelectionKey.OP_READ);
+      debug.display("UDP connected");
       //-----------------multicast non bloquant---------------------------------
-      //revoir l'interface de connexion
-      //faire une fonction qui parcours les interfaces active et en selectionne une??
-      //NetworkInterface.getNetworkInterface().nextElement();
       NetworkInterface interf = NetworkInterface.getNetworkInterfaces().nextElement();
       InetAddress group = ring_one.getAddressMult();
       DatagramChannel udp_emergency = DatagramChannel.open()
@@ -190,18 +227,22 @@ public class Entity{
       udp_emergency.configureBlocking(false);
       udp_emergency.register(sel, SelectionKey.OP_READ);
       udp_emergency.join(group, interf);
+      debug.display("Multicast connected");
       //-------------connexion en tcp_input non bloquante-----------------------------
       ServerSocketChannel tcp_in = ServerSocketChannel.open();
       tcp_in.configureBlocking(false);
       tcp_in.bind(new InetSocketAddress(ring_one.getTcpIn()));
       tcp_in.register(sel, SelectionKey.OP_ACCEPT);
+      debug.display("TCP connected");
       //-------------connexion en tcp_appli non bloquante-----------------------------
       ServerSocketChannel tcp_appli = ServerSocketChannel.open();
       tcp_appli.configureBlocking(false);
       tcp_appli.bind(new InetSocketAddress(appli_TCP));
       tcp_appli.register(sel, SelectionKey.OP_ACCEPT);
+      debug.display("TCP appli connected");
 
-      ByteBuffer buff=ByteBuffer.allocate(100);
+      //taille du buffer à revoir??
+      ByteBuffer buff = ByteBuffer.allocate(512);
       System.out.println("Ringoooo!");
       //---------------boucle d'attente d'une action---------------------------
       while(true){
@@ -214,54 +255,107 @@ public class Entity{
           //--------------------Ring input UDP----------------------------------
           if(sk.isReadable() && sk.channel()==udp_in){
             //System.out.println("Message input_UDP recu");
+            boolean passMessage = true;
             udp_in.receive(buff);
-            String st=new String(buff.array(),0,buff.array().length);
+            String st = new String(buff.array(),0,buff.array().length);
+            System.out.println("Message reçu : "+st);
+            //taille du buffer à revoir??
             buff = ByteBuffer.allocate(100);
-            String[] parts = st.split(" ", 5);
-            System.out.println(st);
+            String[] parts = st.split(" ", 8);
             String idm_received = parts[1];
             Appli appli_received = appliOf(parts[2].replaceAll("#", ""));
-
-            //if appli active est la meme que l'appli recu activate communication
-            //et que l'id de transfert est le meme pour le transfert de fichier
-            //doit passer la comsock en args de la fonction qui traitera les infos
-            //doit sauvegarder la comSock en dehors du while
-            // dans la fonction check if QUIT to close comSock and put
-            //active appli to none again
-            if(appli_received.equals(appli_active)){
-              if(appli_active==Appli.TRANS){
-                debug.display("Transfert de fichier is running");
+            
+            //les if servent à savoir si les messages sont à l'attention de l'entité
+            //s'ils faut les traiter ou juste les faire suivre à l'anneau
+            if(appli_received==Appli.TRANS){
+              debug.display("Transfert de fichier received");
+              if(appli_received == appli_active){
+                if (parts[3].equals("REQ") && ring_one.getMessageList().contains(idm_received)){
+                  debug.display("File not found in the ring.");
+                  appli_active = Appli.NONE;
+                  //pas besoin de le supprimer car cas traité dans la boucle if(passMessage)
+                }
+                if(parts[3].equals("ROK") && parts[6].trim().equals(trans.getFilename())){
+                  debug.display("File found begin saving the parts of the file");
+                  trans.init(st, debug);
+                  passMessage = false;
+                }
+                if(parts[3].equals("SEN") && trans.isWaitingSen() && parts[4] == trans.getIdTrans()){
+                  debug.display("##############################################################################");
+                  //trans.insert_message(buff, debug);
+                  debug.display("Insertion");
+                  if(trans.isFull()){
+                    //copy file_parts to dst
+                    trans.copy_file(debug);
+                    trans = null;
+                    appli_active = Appli.NONE;
+                  }
+                  passMessage = false;
+                }
+              } else {
+                String filename = parts[5];
+                if (parts[3].equals("REQ") && got_file(filename)) {
+                  passMessage = false;
+                  String idm = formatInt((int) (Math.random()*99999999), 8);
+                  String idtrans = formatInt((int) (Math.random()*99999999), 8);
+                  String answer = "APPL "+idm+" TRANS### ROK "+idtrans+" "+formatInt(filename.trim().length(), 2)+" "+filename+" "+getNbMessFile(filename);
+                  debug.display("Message rok : "+answer);
+                  DatagramSocket dso=new DatagramSocket();
+                  byte[] data = new byte[512];
+                  data = answer.getBytes();
+                  String fuckingpoop = new String(data,0,data.length);
+                  debug.display("ROK double transformed : "+fuckingpoop);
+                  InetSocketAddress ia = new InetSocketAddress(ring_one.getAddressNext(), ring_one.getUdpNext());
+                  DatagramPacket paquet = new DatagramPacket(data, data.length, ia);
+                  dso.send(paquet);
+                  //sends parts of the file
+                  Path path = Paths.get("./shared/"+(filename.trim()));
+                  byte[] fileArray = Files.readAllBytes(path);
+                  //----------------------sends bytes to client-------------------------
+                  debug.display("Send messages");
+                  /*for(int i=0; i<fileArray.length; i=i+463){
+                    idm = formatInt((int) (Math.random()*99999999), 8);
+                    //copy of range doesn't take the last caracter
+                    int count = 0;
+                    byte[] sub = Arrays.copyOfRange(fileArray, i, i+463);
+                    String pref = "APPL "+idm+" TRANS### SEN "+idtrans+" "+count+" "+sub.length+" ";
+                    byte[] sen = concatenateByteArrays(pref.getBytes(), sub);
+                    paquet = new DatagramPacket(sen, sen.length, ia);
+                    dso.send(paquet);
+                    count++;
+                  }*/
+                  dso.close();
+                }
               }
-              if(appli_active==Appli.PENDU){
-                debug.display("Pendu is running");
-              }
-              if(appli_active==Appli.GEST){
-                //do shit
-                debug.display("Gestion protocole is running");
-              }
+            } else 
+            if(appli_received==Appli.PENDU){
+              debug.display("Pendu received");
+            } else 
+            if(appli_received==Appli.GEST){
+              debug.display("Gestion protocole received");
             }
 
-            //tcp readable pour lire ok a chaque fois et quit a la fin de l'appli
-
-            //si le message n'est pas déjà passé par ici - ie this est l'expediteur
-            if(!ring_one.getMessageList().contains(idm_received)){
-              System.out.println("Message reçu :"+parts[4]);
-              //envoie du paquet en udp
-              DatagramSocket dso=new DatagramSocket();
-              byte[] data;
-              data = st.getBytes();
-              DatagramPacket paquet = new DatagramPacket(data,data.length,
-              ring_one.getAddressNext(), ring_one.getUdpNext());
-              dso.send(paquet);
-            } else  {
-              ring_one.getMessageList().remove(idm_received);
+            if(passMessage) {
+              //si le message n'est pas déjà passé par ici - ie this est l'expediteur
+              if(!ring_one.getMessageList().contains(idm_received)){
+                //System.out.println("Message reçu : "+st);
+                //envoie du paquet en udp
+                DatagramSocket dso=new DatagramSocket();
+                byte[] data;
+                data = st.getBytes();
+                DatagramPacket paquet = new DatagramPacket(data,data.length,
+                ring_one.getAddressNext(), ring_one.getUdpNext());
+                dso.send(paquet);
+                dso.close();
+              } else  {
+                ring_one.getMessageList().remove(idm_received);
+              }
             }
           //---------------------Ring emergency_UDP-----------------------------
           } else if (sk.isReadable() && sk.channel()==udp_emergency){
             System.out.println("Message emergency_UDP recu");
             udp_emergency.receive(buff);
             String st=new String(buff.array(),0,buff.array().length);
-            buff.clear();
             System.out.println("Message: "+st);
           //--------------------Ring input_TCP--------------------
           } else if (sk.isAcceptable() && sk.channel()==tcp_in){
@@ -276,7 +370,7 @@ public class Entity{
             String st = comBR.readLine();
             String[] parts = st.split(" ");
             if((parts[0]).equals("NEWC")){
-              ring_one.insertion(parts[2], parts[1]);
+              ring_one.insertion(parts[1], parts[2]);
               comPW.println("ACKC");
               comPW.flush();
               debug.display("Entiy inserted");
@@ -293,21 +387,27 @@ public class Entity{
             Socket comSock = (tcp_appli.accept()).socket();
             BufferedReader comBR = getBR(comSock);
   					PrintWriter comPW = getPW(comSock);
-            System.out.println("Application connected!");
+            debug.display("Application connected!");
             //reads initial message and sends it to the ring
             String s = comBR.readLine();
-            String [] parts = s.split(" ", 3);
+            String [] parts = s.split(" ", 6);
             String idm_received = parts[1];
+            //saves id of message sent to list
             ring_one.getMessageList().add(idm_received);
-            //remettre appli_active a none à la fermeture de la connexion!
             appli_active = appliOf(parts[2].replaceAll("#", ""));
+            if(appli_active==Appli.TRANS){
+              debug.display("Create Transinfo");
+              trans = new TransInfo(parts[5].trim());
+            }
             //envoie du paquet en udp
+            debug.display("Appli message sent to the ring");
             DatagramSocket dso=new DatagramSocket();
             byte[]data;
             data = s.getBytes();
             DatagramPacket paquet = new DatagramPacket(data,data.length,
             ring_one.getAddressNext(), ring_one.getUdpNext());
             dso.send(paquet);
+            dso.close();
             //------------------close communication-----------------------------
             comBR.close();
   					comPW.close();
@@ -319,6 +419,7 @@ public class Entity{
           } else {
             System.out.println("Que s'est il passe");
           }
+          buff = ByteBuffer.allocate(512);
         }
       }
     } catch (Exception e){
