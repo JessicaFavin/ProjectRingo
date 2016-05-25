@@ -38,7 +38,7 @@ public class Entity{
     try{
       Path path = Paths.get("./shared/"+(filename.trim()));
       byte[] fileArray = Files.readAllBytes(path);
-      return formatInt(fileArray.length/463, 8);
+      return formatInt((fileArray.length/463)+1, 8);
     } catch (Exception e){
       System.out.println(e);
       e.printStackTrace();
@@ -124,6 +124,7 @@ public class Entity{
         return iac.getHostAddress();
       }
     } catch (Exception e) {
+      System.out.println(e);
       e.printStackTrace();
     }
 
@@ -135,7 +136,46 @@ public class Entity{
     System.arraycopy(a, 0, result, 0, a.length); 
     System.arraycopy(b, 0, result, a.length, b.length); 
     return result;
-} 
+  } 
+
+  private static void insert_entity(BufferedReader comBR, PrintWriter comPW, RingInfo ring, Debug debug){
+    try{
+      String welc = "WELC "+formatAddress(ring.getAddressNext())+" "+ring.getUdpNext()
+        +" "+formatAddress(ring.getAddressMult())+" "+ring.getUdpMult();
+      debug.display(welc);
+      comPW.println(welc);
+      comPW.flush();
+      String st = comBR.readLine();
+      String[] parts = st.split(" ");
+      if((parts[0]).equals("NEWC")){
+        ring.insertion(parts[1], parts[2]);
+        comPW.println("ACKC");
+        comPW.flush();
+        debug.display("Entiy inserted");
+      } else {
+        comPW.println("Message NEWC non conforme recommencez la procédure d'insertion.");
+        comPW.flush();
+      }
+    } catch (Exception e){
+      System.out.println(e);
+      e.printStackTrace();
+    }
+  }
+
+  private static String appliToString(Appli a){
+    switch (a){
+      case TRANS:
+        return "TRANS";
+      case PENDU:
+        return "PENDU";
+      case GEST:
+        return "GEST";
+      case NONE:
+        return "NONE";
+      default:
+        return "NONE";
+    }
+  }
 
   public static void main(String[] args) {
     try{
@@ -258,17 +298,15 @@ public class Entity{
             boolean passMessage = true;
             udp_in.receive(buff);
             String st = new String(buff.array(),0,buff.array().length);
-            System.out.println("Message reçu : "+st);
-            //taille du buffer à revoir??
-            buff = ByteBuffer.allocate(100);
+            //System.out.println("Message reçu : "+st);
+            //System.out.println(appliToString(appli_active));
             String[] parts = st.split(" ", 8);
             String idm_received = parts[1];
             Appli appli_received = appliOf(parts[2].replaceAll("#", ""));
-            
             //les if servent à savoir si les messages sont à l'attention de l'entité
             //s'ils faut les traiter ou juste les faire suivre à l'anneau
             if(appli_received==Appli.TRANS){
-              debug.display("Transfert de fichier received");
+              // /debug.display("Transfert de fichier received");
               if(appli_received == appli_active){
                 if (parts[3].equals("REQ") && ring_one.getMessageList().contains(idm_received)){
                   debug.display("File not found in the ring.");
@@ -280,10 +318,9 @@ public class Entity{
                   trans.init(st, debug);
                   passMessage = false;
                 }
-                if(parts[3].equals("SEN") && trans.isWaitingSen() && parts[4] == trans.getIdTrans()){
-                  debug.display("##############################################################################");
-                  //trans.insert_message(buff, debug);
-                  debug.display("Insertion");
+                if(parts[3].equals("SEN") && parts[4].trim().equals(trans.getIdTrans())) {
+                  //debug.display("##############################################################################");
+                  trans.insert_message(buff, debug);
                   if(trans.isFull()){
                     //copy file_parts to dst
                     trans.copy_file(debug);
@@ -293,18 +330,17 @@ public class Entity{
                   passMessage = false;
                 }
               } else {
-                String filename = parts[5];
+                String filename = parts[5].trim();
                 if (parts[3].equals("REQ") && got_file(filename)) {
                   passMessage = false;
                   String idm = formatInt((int) (Math.random()*99999999), 8);
                   String idtrans = formatInt((int) (Math.random()*99999999), 8);
-                  String answer = "APPL "+idm+" TRANS### ROK "+idtrans+" "+formatInt(filename.trim().length(), 2)+" "+filename+" "+getNbMessFile(filename);
-                  debug.display("Message rok : "+answer);
+                  String nummess = getNbMessFile(filename);
+                  String answer = "APPL "+idm+" TRANS### ROK "+idtrans+" "+formatInt(filename.trim().length(), 2)+" "+filename+" "+nummess;
+                  //debug.display("Message rok : "+answer);
                   DatagramSocket dso=new DatagramSocket();
                   byte[] data = new byte[512];
                   data = answer.getBytes();
-                  String fuckingpoop = new String(data,0,data.length);
-                  debug.display("ROK double transformed : "+fuckingpoop);
                   InetSocketAddress ia = new InetSocketAddress(ring_one.getAddressNext(), ring_one.getUdpNext());
                   DatagramPacket paquet = new DatagramPacket(data, data.length, ia);
                   dso.send(paquet);
@@ -313,17 +349,18 @@ public class Entity{
                   byte[] fileArray = Files.readAllBytes(path);
                   //----------------------sends bytes to client-------------------------
                   debug.display("Send messages");
-                  /*for(int i=0; i<fileArray.length; i=i+463){
+                  int count = 0;
+                  for(int i=0; i<fileArray.length; i=i+463){
                     idm = formatInt((int) (Math.random()*99999999), 8);
                     //copy of range doesn't take the last caracter
-                    int count = 0;
+                    debug.display(Integer.toString(count));
                     byte[] sub = Arrays.copyOfRange(fileArray, i, i+463);
                     String pref = "APPL "+idm+" TRANS### SEN "+idtrans+" "+count+" "+sub.length+" ";
                     byte[] sen = concatenateByteArrays(pref.getBytes(), sub);
                     paquet = new DatagramPacket(sen, sen.length, ia);
                     dso.send(paquet);
                     count++;
-                  }*/
+                  }
                   dso.close();
                 }
               }
@@ -362,23 +399,7 @@ public class Entity{
             Socket comSock = (tcp_in.accept()).socket();
             BufferedReader comBR = getBR(comSock);
   					PrintWriter comPW = getPW(comSock);
-            String welc = "WELC "+formatAddress(ring_one.getAddressNext())+" "+ring_one.getUdpNext()
-              +" "+formatAddress(ring_one.getAddressMult())+" "+ring_one.getUdpMult();
-              debug.display(welc);
-            comPW.println(welc);
-            comPW.flush();
-            String st = comBR.readLine();
-            String[] parts = st.split(" ");
-            if((parts[0]).equals("NEWC")){
-              ring_one.insertion(parts[1], parts[2]);
-              comPW.println("ACKC");
-              comPW.flush();
-              debug.display("Entiy inserted");
-            } else {
-              comPW.println("Message NEWC non conforme recommencez la procédure d'insertion.");
-              comPW.flush();
-            }
-            //------------------close communication-----------------------------
+            insert_entity(comBR, comPW, ring_one, debug);
             comBR.close();
   					comPW.close();
   					comSock.close();
