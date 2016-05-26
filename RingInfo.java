@@ -45,11 +45,11 @@ public class RingInfo{
   public void init_ring(String udp_in, String tcp_in, String udp_mult,
   String address_mult, String udp_next, String address_next){
     try{
-      this.udp_in = Integer.parseInt(udp_in);
-      this.tcp_in = Integer.parseInt(tcp_in);
-      this.udp_mult = Integer.parseInt(udp_mult);
+      this.udp_in = Integer.valueOf(udp_in);
+      this.tcp_in = Integer.valueOf(tcp_in);
+      this.udp_mult = Integer.valueOf(udp_mult);
       this.address_mult = (Inet4Address) InetAddress.getByName(address_mult);
-      this.udp_next = Integer.parseInt(udp_next);
+      this.udp_next = Integer.valueOf(udp_next);
       this.address_next = (Inet4Address) InetAddress.getByName(address_next);
       this.message_list = new ArrayList<String>();
       this.initiated = true;
@@ -62,9 +62,9 @@ public class RingInfo{
   public void init_self_ring(String udp_in, String tcp_in, String udp_mult,
   String address_mult){
     try{
-      this.udp_in = Integer.parseInt(udp_in);
-      this.tcp_in = Integer.parseInt(tcp_in);
-      this.udp_mult = Integer.parseInt(udp_mult);
+      this.udp_in = Integer.valueOf(udp_in);
+      this.tcp_in = Integer.valueOf(tcp_in);
+      this.udp_mult = Integer.valueOf(udp_mult);
       this.address_mult = (Inet4Address) InetAddress.getByName(address_mult);
       //next entity is self
       this.udp_next = this.udp_in;
@@ -79,7 +79,7 @@ public class RingInfo{
 
   public void insertion(String udp_next, String address_next){
     try{
-      this.udp_next = Integer.parseInt(udp_next);
+      this.udp_next = Integer.valueOf(udp_next);
       this.address_next = (Inet4Address) InetAddress.getByName(address_next);
     } catch (Exception e){
       System.out.println(e);
@@ -110,6 +110,17 @@ public class RingInfo{
   public Inet4Address getAddressNext(){
     return address_next;
   }
+
+  public void newSucc(String new_udp, String new_addr){
+    try{
+      this.udp_next = Integer.valueOf(new_udp);
+      this.address_next = (Inet4Address) InetAddress.getByName(new_addr);
+    } catch (Exception e){
+      System.out.println(e);
+      e.printStackTrace();
+    }
+  }
+
 
   public ArrayList<String> getMessageList(){
     return message_list;

@@ -16,9 +16,72 @@ import java.util.Arrays;
 
 public class Entity{
 
-  private static String whos(int id, Inet4Address ip, int port){
-    int idm = (int) (Math.random()*99999999);
+  private static int randomId(){
+    return (int) (Math.random()*99999999);
+  }
+
+  public static String sendWhos(){
+    int idm = randomId();
+    String res = "WHOS "+idm;
+    return res;
+  }
+
+  private static String handleWhos(int id, Inet4Address ip, int port){
+    int idm = randomId();
     String res = "MEMB "+idm+" "+id+" "+ip+" "+port;
+    return res;
+  }
+
+  private static String sendGbye(Inet4Address ip, int port, Inet4Address ip_succ, int port_succ){
+    String res = null;
+    try{
+      int idm = randomId();
+      res = "GBYE "+idm+" "+formatAddress(ip)+" "+formatInt(port, 4)+" "+formatAddress(ip_succ)+" "+formatInt(port_succ, 4);
+    } catch (Exception e){
+      System.out.println(e);
+      e.printStackTrace();
+    }
+    return res;
+  }
+
+  private static boolean handleGbye(String st, RingInfo ring){
+    try{
+      String[] parts = st.split(" ");
+      String current_next_port = Integer.toString(ring.getUdpNext()).replaceAll("/","");
+      String current_next_ip =  ring.getAddressNext().toString().replaceAll("/","");
+      if(parts[2].equals(current_next_ip) && parts[3].equals(current_next_port)){
+        String new_udp = parts[5].trim();
+        String new_addr = parts[4].trim();
+        //sends EYBG confirmation to the ring
+        DatagramSocket dso=new DatagramSocket();
+        byte[] data = eybg().getBytes();
+        InetSocketAddress ia = new InetSocketAddress(ring.getAddressNext(), ring.getUdpNext());
+        DatagramPacket paquet = new DatagramPacket(data, data.length, ia);
+        dso.send(paquet);
+        dso.close();
+        //actualize the successor
+        ring.newSucc(new_udp, new_addr);
+        return false;
+      }
+    } catch (Exception e){
+      System.out.println(e);
+      e.printStackTrace();
+    }
+    //valeur to be stored in passMessage
+    return true;
+  }
+
+  private static String eybg(){
+    int idm = randomId();
+    String res = "EYBG "+idm;
+    return res;
+  }
+
+  public static String sendTest(RingInfo ring){
+    int idm = randomId();
+    String ip_diff = ring.getAddressMult().toString();
+    String port_diff = Integer.toString(ring.getUdpMult());
+    String res = "TEST "+idm+" "+ip_diff+" "+port_diff;
     return res;
   }
 
