@@ -9,6 +9,7 @@ import java.net.StandardSocketOptions;
 import java.nio.channels.*;
 import java.io.File;
 import java.net.*;
+import java.util.UUID;
 import java.nio.file.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -16,18 +17,18 @@ import java.util.Arrays;
 
 public class Entity{
 
-  private static int randomId(){
-    return (int) (Math.random()*99999999);
+  private static String randomId(){
+     String uuid = UUID.randomUUID().toString().subString(0,8);
   }
 
   public static String sendWhos(){
-    int idm = randomId();
+    String idm = randomId();
     String res = "WHOS "+idm;
     return res;
   }
 
-  private static String handleWhos(int id, Inet4Address ip, int port){
-    int idm = randomId();
+  private static String handleWhos(String id, Inet4Address ip, int port){
+    String idm = randomId();
     String res = "MEMB "+idm+" "+id+" "+ip+" "+port;
     return res;
   }
@@ -35,7 +36,7 @@ public class Entity{
   private static String sendGbye(Inet4Address ip, int port, Inet4Address ip_succ, int port_succ){
     String res = null;
     try{
-      int idm = randomId();
+      String idm = randomId();
       res = "GBYE "+idm+" "+formatAddress(ip)+" "+formatInt(port, 4)+" "+formatAddress(ip_succ)+" "+formatInt(port_succ, 4);
     } catch (Exception e){
       System.out.println(e);
@@ -72,13 +73,13 @@ public class Entity{
   }
 
   private static String eybg(){
-    int idm = randomId();
+    String idm = randomId();
     String res = "EYBG "+idm;
     return res;
   }
 
   public static String sendTest(RingInfo ring){
-    int idm = randomId();
+    String idm = randomId();
     String ip_diff = ring.getAddressMult().toString();
     String port_diff = Integer.toString(ring.getUdpMult());
     String res = "TEST "+idm+" "+ip_diff+" "+port_diff;
@@ -260,7 +261,7 @@ public class Entity{
 
   public static void main(String[] args) {
     try{
-      int id = 0;
+      String id = randomId();
       int appli_TCP = 0;
       int input_appli = 0;
       int output_appli = 0;
@@ -283,16 +284,12 @@ public class Entity{
       String response = sc.nextLine();
       String[] init = response.split(" ");
       if(init[0].equals("C")&&init.length==6){
-        //id is the udp port for now
-        id = Integer.valueOf(init[1]);
         ring_one.init_self_ring(init[1], init[2], init[4], init[3]);
         appli_TCP =  Integer.valueOf(init[5]);
         Inet4Address self_address = ring_one.getAddressNext();
         debug.display("Self address : "+self_address);
         System.out.println("All infos received. Creating the ring now!");
       } else if(init[0].equals("J")&&init.length==6){
-        //id is the udp port for now
-        id = Integer.valueOf(init[1]);
         InetAddress entity_address = (Inet4Address) InetAddress.getByName(init[3]);
         int entity_TCP = Integer.valueOf(init[4]);
         appli_TCP =  Integer.valueOf(init[5]);
@@ -376,19 +373,15 @@ public class Entity{
           it.remove();
           //--------------------Ring input UDP----------------------------------
           if(sk.isReadable() && sk.channel()==udp_in){
-            //System.out.println("Message input_UDP recu");
             boolean passMessage = true;
             udp_in.receive(buff);
             String st = new String(buff.array(),0,buff.array().length);
-            //System.out.println("Message reçu : "+st);
-            //System.out.println(appliToString(appli_active));
             String[] parts = st.split(" ", 8);
             String idm_received = parts[1];
             Appli appli_received = appliOf(parts[2].replaceAll("#", ""));
             //les if servent à savoir si les messages sont à l'attention de l'entité
             //s'ils faut les traiter ou juste les faire suivre à l'anneau
             if(appli_received==Appli.TRANS){
-              // /debug.display("Transfert de fichier received");
               if(appli_received == appli_active){
                 if (parts[3].equals("REQ") && ring_one.getMessageList().contains(idm_received)){
                   debug.display("File not found in the ring.");
@@ -401,7 +394,6 @@ public class Entity{
                   passMessage = false;
                 }
                 if(parts[3].equals("SEN") && parts[4].trim().equals(trans.getIdTrans())) {
-                  //debug.display("##############################################################################");
                   trans.insert_message(buff, debug);
                   if(trans.isFull()){
                     //copy file_parts to dst
@@ -415,8 +407,8 @@ public class Entity{
                 String filename = parts[5].trim();
                 if (parts[3].equals("REQ") && got_file(filename)) {
                   passMessage = false;
-                  String idm = formatInt((int) (Math.random()*99999999), 8);
-                  String idtrans = formatInt((int) (Math.random()*99999999), 8);
+                  String idm = randomId();
+                  String idtrans = randomId();
                   String nummess = getNbMessFile(filename);
                   String answer = "APPL "+idm+" TRANS### ROK "+idtrans+" "+formatInt(filename.trim().length(), 2)+" "+filename+" "+nummess;
                   DatagramSocket dso=new DatagramSocket();
@@ -432,7 +424,7 @@ public class Entity{
                   debug.display("Send messages");
                   int count = 0;
                   for(int i=0; i<fileArray.length; i=i+463){
-                    idm = formatInt((int) (Math.random()*99999999), 8);
+                    idm = randomId();
                     //copy of range doesn't take the last caracter
                     debug.display(Integer.toString(count));
                     byte[] sub = null;
