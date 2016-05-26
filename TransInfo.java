@@ -14,6 +14,7 @@ public class TransInfo{
 	private byte[][] file_parts;
 	private String id_trans;
 	private boolean waiting_sen;
+	private int received;
 
 	public TransInfo(String name){
 		this.filename = name;
@@ -21,17 +22,18 @@ public class TransInfo{
 		this.id_trans = "";
 		this.file_parts = null;
 		this.waiting_sen = false;
+		this.received = 0;
 	}
 
 	public void init(String st, Debug debug) throws Exception {
 		String[] parts = st.split(" ");
-		System.out.println("ROK recu par client : "+st);
+		debug.display("ROK recu par client : "+st);
 		if(checkFormatSEN(parts)){
-			//max_mess still needs to be fixed
 			this.max_mess = Integer.valueOf(parts[7].trim());
 			this.id_trans = parts[4];
-			this.file_parts = new byte[max_mess][512];
+			this.file_parts = new byte[max_mess][463];
 			this.waiting_sen = true;
+			debug.display("init should be okay");
 		} else {
 			throw new Exception("Format du message de transfert (ROK) incorrect");
 		}
@@ -55,15 +57,18 @@ public class TransInfo{
 
 	public void insert_message(ByteBuffer buff, Debug debug) throws Exception {
 		String mess = new String(buff.array(),0,buff.array().length);
-		debug.display(mess);
+		//debug.display(mess);
 		String[] parts = mess.split(" ", 8);
 		if(checkFormatSEN(parts)){
-			int i = Integer.parseInt(parts[5]);
+			int i = Integer.valueOf(parts[5]);
 			debug.display("inserting message n°"+i);
-			byte[] test = Arrays.copyOfRange(buff.array(), 0, 41);
-			mess = new String(test,0,test.length);
-			byte[] sub = Arrays.copyOfRange(buff.array(), 42, buff.array().length);
+			byte[] sub = Arrays.copyOfRange(buff.array(), 49, buff.array().length);
+			if(i==(max_mess-1)){
+				debug.display("reallocating : "+Integer.toString(buff.array().length-49));
+				file_parts[i] = new byte[buff.array().length-49];
+			}
 			file_parts[i] = sub;
+			received++;
 		} else {
 			throw new Exception("Format du message de transfert (SEN) incorrect");
 		}
@@ -71,7 +76,7 @@ public class TransInfo{
 
 	public void copy_file(Debug debug){
 		try{
-			FileOutputStream fos = new FileOutputStream(("./received/"+filename), true);
+			FileOutputStream fos = new FileOutputStream(("./received/"+filename), false);
 			debug.display("Start copying file to directory");
 			for(int i=0; i<max_mess; i++){
 				debug.display(i+"/"+(max_mess-1));
@@ -87,12 +92,7 @@ public class TransInfo{
 	}
 
 	public boolean isFull(){
-		int i=0;
-		for (byte b[] : this.file_parts){
-			if (b[0]!=(byte)0) i++;
-		}
-		this.waiting_sen = false;
-		return i == this.max_mess;
+		return this.received == this.max_mess;
 	}
 
 	public String getIdTrans(){
@@ -106,4 +106,5 @@ public class TransInfo{
 	public boolean isWaitingSen(){
 		return waiting_sen;
 	}
+
 }

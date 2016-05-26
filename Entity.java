@@ -201,22 +201,40 @@ public class Entity{
     return result;
   } 
 
-  private static void insert_entity(BufferedReader comBR, PrintWriter comPW, RingInfo ring, Debug debug){
+  private static void insert_entity(BufferedReader comBR, PrintWriter comPW, RingInfo ring_one, 
+    RingInfo ring_two, DatagramChannel udp_emergency_two, Selector sel, Debug debug){
     try{
-      String welc = "WELC "+formatAddress(ring.getAddressNext())+" "+ring.getUdpNext()
-        +" "+formatAddress(ring.getAddressMult())+" "+ring.getUdpMult();
+      String welc = "WELC "+formatAddress(ring_one.getAddressNext())+" "+ring_one.getUdpNext()
+        +" "+formatAddress(ring_one.getAddressMult())+" "+ring_one.getUdpMult();
       debug.display(welc);
       comPW.println(welc);
       comPW.flush();
       String st = comBR.readLine();
       String[] parts = st.split(" ");
-      if((parts[0]).equals("NEWC")){
-        ring.insertion(parts[1], parts[2]);
+      if(parts[0].equals("NEWC")) {
+        ring_one.insertion(parts[1], parts[2]);
         comPW.println("ACKC");
         comPW.flush();
         debug.display("Entiy inserted");
+      } else if(parts[0].equals("DUPL")) {
+        //init_ring(String udp_in, String tcp_in, String udp_mult,String address_mult, String udp_next, String address_next)
+        ring_two.init_ring(Integer.toString(ring_one.getUdpIn()), Integer.toString(ring_one.getTcpIn()), parts[4].trim(), parts[3], parts[2], parts[1]);
+        //new udp_mult to initialize!
+        NetworkInterface interf = NetworkInterface.getNetworkInterfaces().nextElement();
+        InetAddress group = ring_two.getAddressMult();
+        udp_emergency_two = DatagramChannel.open()
+        .setOption(StandardSocketOptions.SO_REUSEADDR, true)
+        .bind(new InetSocketAddress(ring_two.getUdpMult()))
+        .setOption(StandardSocketOptions.IP_MULTICAST_IF, interf);
+        udp_emergency_two.configureBlocking(false);
+        udp_emergency_two.register(sel, SelectionKey.OP_READ);
+        udp_emergency_two.join(group, interf);
+        debug.display("Multicast_dupl connected");
+        comPW.println("ACKD");
+        comPW.flush();
+        debug.display("Ring duplicated");
       } else {
-        comPW.println("Message NEWC non conforme recommencez la procédure d'insertion.");
+        comPW.println("Message NEWC or DUPL non conforme recommencez la procédure d'insertion.");
         comPW.flush();
       }
     } catch (Exception e){
@@ -251,6 +269,7 @@ public class Entity{
       Appli appli_active = Appli.NONE;
       TransInfo trans = null;
       Debug debug = new Debug(false);
+      DatagramChannel udp_emergency_two = null;
 
       if(args.length==1 && (args[0].equals("-d")||args[0].equals("--debug"))){
         debug.activate();
@@ -265,18 +284,18 @@ public class Entity{
       String[] init = response.split(" ");
       if(init[0].equals("C")&&init.length==6){
         //id is the udp port for now
-        id = Integer.parseInt(init[1]);
+        id = Integer.valueOf(init[1]);
         ring_one.init_self_ring(init[1], init[2], init[4], init[3]);
-        appli_TCP =  Integer.parseInt(init[5]);
+        appli_TCP =  Integer.valueOf(init[5]);
         Inet4Address self_address = ring_one.getAddressNext();
         debug.display("Self address : "+self_address);
         System.out.println("All infos received. Creating the ring now!");
       } else if(init[0].equals("J")&&init.length==6){
         //id is the udp port for now
-        id = Integer.parseInt(init[1]);
+        id = Integer.valueOf(init[1]);
         InetAddress entity_address = (Inet4Address) InetAddress.getByName(init[3]);
-        int entity_TCP = Integer.parseInt(init[4]);
-        appli_TCP =  Integer.parseInt(init[5]);
+        int entity_TCP = Integer.valueOf(init[4]);
+        appli_TCP =  Integer.valueOf(init[5]);
         debug.display("Connecting int TCP to entity");
         Socket tmp_sock = new Socket(entity_address, entity_TCP);
 				BufferedReader br = getBR(tmp_sock);
@@ -314,13 +333,13 @@ public class Entity{
 
       //create selector
       Selector sel=Selector.open();
-      //--------------connexion en udp non bloquante----------------------------
+      //--------------connexion en udp_in non bloquante----------------------------
       DatagramChannel udp_in=DatagramChannel.open();
       udp_in.configureBlocking(false);
       udp_in.bind(new InetSocketAddress(ring_one.getUdpIn()));
       udp_in.register(sel,SelectionKey.OP_READ);
       debug.display("UDP connected");
-      //-----------------multicast non bloquant---------------------------------
+      //-----------------udp_mult non bloquant---------------------------------
       NetworkInterface interf = NetworkInterface.getNetworkInterfaces().nextElement();
       InetAddress group = ring_one.getAddressMult();
       DatagramChannel udp_emergency = DatagramChannel.open()
@@ -400,7 +419,6 @@ public class Entity{
                   String idtrans = formatInt((int) (Math.random()*99999999), 8);
                   String nummess = getNbMessFile(filename);
                   String answer = "APPL "+idm+" TRANS### ROK "+idtrans+" "+formatInt(filename.trim().length(), 2)+" "+filename+" "+nummess;
-                  //debug.display("Message rok : "+answer);
                   DatagramSocket dso=new DatagramSocket();
                   byte[] data = new byte[512];
                   data = answer.getBytes();
@@ -417,8 +435,13 @@ public class Entity{
                     idm = formatInt((int) (Math.random()*99999999), 8);
                     //copy of range doesn't take the last caracter
                     debug.display(Integer.toString(count));
-                    byte[] sub = Arrays.copyOfRange(fileArray, i, i+463);
-                    String pref = "APPL "+idm+" TRANS### SEN "+idtrans+" "+count+" "+sub.length+" ";
+                    byte[] sub = null;
+                    if(count == (Integer.valueOf(nummess)-1)){
+                      sub = Arrays.copyOfRange(fileArray, i, fileArray.length);
+                    } else {
+                      sub = Arrays.copyOfRange(fileArray, i, i+463);
+                    }
+                    String pref = "APPL "+idm+" TRANS### SEN "+idtrans+" "+formatInt(count,8)+" "+formatInt(sub.length,3)+" ";
                     byte[] sen = concatenateByteArrays(pref.getBytes(), sub);
                     paquet = new DatagramPacket(sen, sen.length, ia);
                     dso.send(paquet);
@@ -462,7 +485,7 @@ public class Entity{
             Socket comSock = (tcp_in.accept()).socket();
             BufferedReader comBR = getBR(comSock);
   					PrintWriter comPW = getPW(comSock);
-            insert_entity(comBR, comPW, ring_one, debug);
+            insert_entity(comBR, comPW, ring_one, ring_two, udp_emergency_two, sel, debug);
             comBR.close();
   					comPW.close();
   					comSock.close();
