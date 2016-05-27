@@ -33,7 +33,7 @@ public class Dico{
       String[] parts = response.split(" ", 3);
       String idm = randomId();
       String id_dico = randomId();
-      String mess = "APPL "+idm+" DICO### REQ "+formatInt(parts[2].length(),2)+" "+parts[2]+" "+id_dico;
+      String mess = "APPL "+idm+" DICO#### REQ "+formatInt(parts[2].length(),3)+" "+parts[2]+" "+id_dico;
       System.out.println(mess);
       //connexion au serveur TCP de l'entité
       Inet4Address entity_address = (Inet4Address) InetAddress.getByName(parts[0]);;

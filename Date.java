@@ -38,7 +38,7 @@ public class Date{
       String res = dateFormat.format(cal.getTime());
       System.out.println(res);
 
-      String mess = "APPL "+idm+" DATE#### "+formatInt(res.length(),2)+" "+res;
+      String mess = "APPL "+idm+" DATE#### "+formatInt(res.length(),3)+" "+res;
       System.out.println(mess);
       //connexion au serveur TCP de l'entité
       Inet4Address entity_address = (Inet4Address) InetAddress.getByName(parts[0]);;

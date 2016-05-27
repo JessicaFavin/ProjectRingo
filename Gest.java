@@ -28,7 +28,7 @@ public class Gest{
     try {
       System.out.println("entity_address entity_TCP_port WHOS");
       System.out.println("entity_address entity_TCP_port TEST ring_concerned");
-      System.out.println("entity_address entity_TCP_port GBYE ring_concerned");
+      System.out.println("entity_address entity_TCP_port GBYE");
       System.out.println("to shut down: QUIT");
       Scanner sc = new Scanner(System.in);
       String response = "";
@@ -46,7 +46,7 @@ public class Gest{
             res = "GEST WHOS";
             break;
           case "GBYE":
-            res = "GEST GBYE "+parts[3].trim();
+            res = "GEST GBYE";
             break;
           case "TEST":
             res = "GEST TEST "+parts[3].trim();

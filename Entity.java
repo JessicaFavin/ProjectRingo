@@ -121,6 +121,8 @@ public class Entity{
       String current_next_port_one = Integer.toString(ring_one.getUdpNext());
       String current_next_ip_one =  formatAddress(ring_one.getAddressNext());
       debug.display("GBYE test if concerned");
+      System.out.println(current_next_port_one+" "+parts[3]);
+      System.out.println(current_next_ip_one+" "+parts[2]);
       if(parts[2].equals(current_next_ip_one) && parts[3].equals(current_next_port_one)){
         debug.display("ring_one concerned");
         String new_udp = parts[5].trim();
@@ -466,7 +468,10 @@ public class Entity{
 				String conf = br.readLine();
         System.out.println(conf);
         String[] welc = conf.split(" ");
-        if(welc[0].equals("WELC")&&welc.length==5){
+        if(welc[0].trim().equals("NOTC")){
+          System.out.println("Ring full.");
+          System.exit(0);
+        } if(welc[0].equals("WELC")&&welc.length==5){
           debug.display(welc[1]+" "+welc[2]);
           //init ring
           ring_one.init_ring(init[1], init[2], welc[4], welc[3], welc[2], welc[1]);
@@ -507,7 +512,7 @@ public class Entity{
         } else if(welc[0].equals("WELC")&&welc.length==5){
           debug.display(welc[1]+" "+welc[2]);
           //init ring
-          ring_one.init_ring(init[1], init[2], welc[4], welc[3], welc[2], welc[1]);
+          ring_one.init_ring(init[1], init[2], init[7].trim(), init[6], welc[2], welc[1]);
           Inet4Address self_address = (Inet4Address) InetAddress.getByName(Entity.getAddress());
           Inet4Address second_addr_mult = (Inet4Address) InetAddress.getByName(init[6]);
           int second_port_mult = Integer.valueOf(init[7]);
@@ -704,8 +709,10 @@ public class Entity{
                   break;
                 case "EYBG":
                   if(isQuitting){
-                    countEYBG++;
-                    if((ring_two.isInitiated() && countEYBG==2)||(!ring_two.isInitiated() && countEYBG==1)){
+                    System.out.println("EYBG received");
+                    countEYBG--;
+                    if(countEYBG == 1 || countEYBG == 0){
+                      System.out.println("Good bye.");
                       System.exit(0);        
                     }
                   }
@@ -806,11 +813,14 @@ public class Entity{
                   ring_two.getMessageList().add(idm);
                   break;
                 case "GBYE":
-                  if(parts[2].trim().equals("1")){
-                    idm = sendGbye(ring_one, ring_two, debug);
-                    ring_one.getMessageList().add(idm);
-                    ring_two.getMessageList().add(idm);
+                  idm = sendGbye(ring_one, ring_two, debug);
+                  if(!ring_two.isInitiated()){
+                    countEYBG = 1;
+                  } else {
+                    countEYBG = 2;
                   }
+                  ring_one.getMessageList().add(idm);
+                  ring_two.getMessageList().add(idm);
                   isQuitting = true;
                   break;
                 case "TEST":
