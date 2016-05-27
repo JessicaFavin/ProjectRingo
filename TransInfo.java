@@ -65,7 +65,7 @@ public class TransInfo{
 			byte[] sub = Arrays.copyOfRange(buff.array(), 49, buff.array().length);
 			if(i==(max_mess-1)){
 				debug.display("reallocating : "+Integer.toString(buff.array().length-49));
-				file_parts[i] = new byte[buff.array().length-49];
+				file_parts[i] = new byte[Integer.valueOf(parts[6])];
 			}
 			file_parts[i] = sub;
 			received++;

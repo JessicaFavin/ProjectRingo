@@ -1,10 +1,10 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
-import java.util.UUID;
-import java.util.Scanner;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 
-public class Dico{
+public class Date{
 
   private static String randomId(){
      String uuid = UUID.randomUUID().toString().substring(0,8);
@@ -26,14 +26,19 @@ public class Dico{
 
   public static void main(String[] args) {
     try {
-      System.out.println("entity_address entity_TCP_port word_to_be_defined");
+      System.out.println("entity_address entity_TCP_port");
       Scanner sc = new Scanner(System.in);
       String response = sc.nextLine();
       //construction du message de l'application
       String[] parts = response.split(" ", 3);
       String idm = randomId();
-      String id_dico = randomId();
-      String mess = "APPL "+idm+" DICO### REQ "+formatInt(parts[2].length(),2)+" "+parts[2]+" "+id_dico;
+
+      DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+      Calendar cal = Calendar.getInstance();
+      String res = dateFormat.format(cal.getTime());
+      System.out.println(res);
+
+      String mess = "APPL "+idm+" DATE#### "+formatInt(res.length(),2)+" "+res;
       System.out.println(mess);
       //connexion au serveur TCP de l'entité
       Inet4Address entity_address = (Inet4Address) InetAddress.getByName(parts[0]);;
@@ -47,6 +52,7 @@ public class Dico{
       pw.flush();
       pw.close();
       sock.close();
+      System.out.println("Date sent");
     } catch(Exception e){
       System.out.println(e);
       e.printStackTrace();

@@ -1,20 +1,10 @@
-<mot>bonjour</mot>
-<defintion>(nom masculin) Terme de salutation dont on se sert pendant la journée quand on aborde quelqu'un ou, moins souvent, quand on prend congé de quelqu'un : Bonjour, comment allez-vous ?</definition>
-<mot>informatique</mot>
-<defintion>(nom féminin) Science du traitement automatique et rationnel de l'information considérée comme le support des connaissances et des communications.</definition>
-<mot>table</mot>
-<defintion>(nom féminin) Meuble composé d'un plateau horizontal reposant sur un ou plusieurs pieds ou supports.</definition>
-<mot>television</mot>
-<defintion>(nom féminin) Transmission, par câble ou par ondes radioélectriques, d'images pouvant être reproduites sur un écran au fur et à mesure de leur réception, ou enregistrées en vue d'une reproduction ultérieure.</definition>
-<mot>universite</mot>
-<defintion>(nom féminin) Ensemble d'établissements scolaires relevant de l'enseignement supérieur regroupé dans une circonscription administrative : L'université de Caen, de Paris-X.</definition>
-<mot>dormir</mot>
-<defintion>(verbe intransitif) Être plongé dans le sommeil : Il a dormi douze heures.</definition>
-<mot>professeur</mot>
-<defintion>(nom masculin) Personne qui enseigne, qui dispense les connaissances relatives à une matière, à une discipline, en général dans le cadre d'une activité.</definition>
-<mot>coder</mot>
-<defintion>(verbe transitif) Appliquer un code à des données ; écrire un programme pour ordinateur.</definition>
-<mot>soutenance</mot>
-<defintion>(nom féminin) Action de soutenir une thèse, un mémoire.</definition>
-<mot>examen</mot>
-<defintion>(nom masculin) Épreuve ou série d'épreuves que subit un candidat en vue de vérifier son degré d'instruction ou d'apprécier ses aptitudes : Passer un examen.</definition>
+bonjour#(nom masculin) Terme de salutation dont on se sert pendant la journée quand on aborde quelqu'un ou, moins souvent, quand on prend congé de quelqu'un : Bonjour, comment allez-vous ?
+informatique#(nom féminin) Science du traitement automatique et rationnel de l'information considérée comme le support des connaissances et des communications.
+table#(nom féminin) Meuble composé d'un plateau horizontal reposant sur un ou plusieurs pieds ou supports.
+television#(nom féminin) Transmission, par câble ou par ondes radioélectriques, d'images pouvant être reproduites sur un écran au fur et à mesure de leur réception, ou enregistrées en vue d'une reproduction ultérieure.
+universite#(nom féminin) Ensemble d'établissements scolaires relevant de l'enseignement supérieur regroupé dans une circonscription administrative : L'université de Caen, de Paris-X.
+dormir#(verbe intransitif) Être plongé dans le sommeil : Il a dormi douze heures.
+professeur#(nom masculin) Personne qui enseigne, qui dispense les connaissances relatives à une matière, à une discipline, en général dans le cadre d'une activité.
+coder#(verbe transitif) Appliquer un code à des données ; écrire un programme pour ordinateur.
+soutenance#(nom féminin) Action de soutenir une thèse, un mémoire.
+examen#(nom masculin) Épreuve ou série d'épreuves que subit un candidat en vue de vérifier son degré d'instruction ou d'apprécier ses aptitudes : Passer un examen.

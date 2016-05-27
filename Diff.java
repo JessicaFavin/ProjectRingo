@@ -32,7 +32,7 @@ public class Diff{
       //construction du message de l'application
       String[] parts = response.split(" ", 3);
       String idm = randomId();
-      String mess = "APPl "+idm+" DIFF### "+formatInt(parts[2].length(),2)+" "+parts[2];
+      String mess = "APPL "+idm+" DIFF### "+formatInt(parts[2].length(),2)+" "+parts[2];
       System.out.println(mess);
       //connexion au serveur TCP de l'entité
       Inet4Address entity_address = (Inet4Address) InetAddress.getByName(parts[0]);;

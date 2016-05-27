@@ -28,7 +28,6 @@ public class Entity{
       String res = "WHOS "+idm;
       //envoie du paquet en udp
       ring_one.getMessageList().add(idm);
-      debug.display("Enregistré : "+Boolean.toString(ring_one.getMessageList().contains(idm)));
       DatagramSocket dso=new DatagramSocket();
       byte[]data;
       data = res.getBytes();
@@ -55,7 +54,7 @@ public class Entity{
 
     try{
       String idm = randomId();
-      String ip = getAddress();
+      String ip = formatAddress(getAddress());
       int port = ring_one.getUdpIn();
       String res = "MEMB "+idm+" "+id+" "+ip+" "+formatInt(port, 4);
       //envoie du paquet en udp
@@ -80,25 +79,32 @@ public class Entity{
     }
   }
 
-  private static String sendGbye(RingInfo ring, Debug debug){
-    if(!ring.isInitiated()){
-      return "";
-    }
+  private static String sendGbye(RingInfo ring_one, RingInfo ring_two, Debug debug){
     try{
       String idm = randomId();
-      Inet4Address ip = ring.getSelfAddress();
-      Inet4Address ip_succ = ring.getAddressNext();
-      int port = ring.getUdpIn();
-      int port_succ = ring.getUdpNext();
-      String res = "GBYE "+idm+" "+formatAddress(ip)+" "+formatInt(port, 4)+" "+formatAddress(ip_succ)+" "+formatInt(port_succ, 4);
+      String ip = getAddress();
+      int port = ring_one.getUdpIn();
+      Inet4Address ip_succ_one = ring_one.getAddressNext();
+      int port_succ_one = ring_one.getUdpNext();
+      String res = "GBYE "+idm+" "+formatAddress(ip)+" "+formatInt(port, 4)+" "+formatAddress(ip_succ_one)+" "+formatInt(port_succ_one, 4);
       //envoie du paquet en udp
-      ring.getMessageList().add(idm);
+      ring_one.getMessageList().add(idm);
       DatagramSocket dso=new DatagramSocket();
       byte[]data;
       data = res.getBytes();
       DatagramPacket paquet = new DatagramPacket(data,data.length,
-      ring.getAddressNext(), ring.getUdpNext());
+      ring_one.getAddressNext(), ring_one.getUdpNext());
       dso.send(paquet);
+      if(ring_two.isInitiated()){
+        idm = randomId();
+        ring_two.getMessageList().add(idm);
+        Inet4Address ip_succ_two = ring_two.getAddressNext();
+        int port_succ_two = ring_two.getUdpNext();
+        res = "GBYE "+idm+" "+formatAddress(ip)+" "+formatInt(port, 4)+" "+formatAddress(ip_succ_two)+" "+formatInt(port_succ_two, 4);
+        paquet = new DatagramPacket(data,data.length,
+        ring_two.getAddressNext(), ring_two.getUdpNext());
+        dso.send(paquet);
+      }
       debug.display("Gbye message sent to the ring");
       dso.close();
       return idm;
@@ -307,7 +313,7 @@ public class Entity{
         while (listIa.hasMoreElements())
           iac = listIa.nextElement();
 
-        return iac.getHostAddress();
+        return formatAddress(iac.getHostAddress());
       }
     } catch (Exception e) {
       System.out.println(e);
@@ -340,7 +346,7 @@ public class Entity{
       String st = comBR.readLine();
       String[] parts = st.split(" ");
        if(parts[0].equals("NEWC")) {
-        ring_one.insertion(parts[1], parts[2]);
+        ring_one.insertion(parts[2], parts[1]);
         comPW.println("ACKC");
         comPW.flush();
         debug.display("Entity inserted");
@@ -387,6 +393,27 @@ public class Entity{
     }
   }
 
+  public static HashMap<String, String> getDictionnary(String file){
+   HashMap<String, String> words     = new HashMap<>();
+    try{
+        InputStream ips         = new FileInputStream(file); 
+        InputStreamReader ipsr  = new InputStreamReader(ips, "utf8");
+        BufferedReader br       = new BufferedReader(ipsr);
+        String line;
+        while ((line=br.readLine())!=null){
+            String[] str = line.split("#");
+            //System.out.println(str[0].trim()+" "+str[1].trim());
+            words.put(str[0].trim(), str[1].trim());
+        }
+        br.close(); 
+
+    }       
+    catch (Exception e){
+            System.out.println(e.toString());
+    }
+    return words;
+  }
+
   public static void main(String[] args) {
     try{
       String id = randomId();
@@ -400,6 +427,13 @@ public class Entity{
       TestInfo test = null;
       Debug debug = new Debug(false);
       DatagramChannel udp_emergency_two = null;
+      boolean isQuitting = false;
+      int countEYBG = 0;
+      //System.out.println("Create dictionary");
+      HashMap<String, String> dictionnaire = getDictionnary("Dictionaire");
+      //System.out.println("Dictionary done");
+      String mot_recherche = "";
+      String id_dico = "";
 
       if(args.length==1 && (args[0].equals("-d")||args[0].equals("--debug"))){
         debug.activate();
@@ -438,7 +472,7 @@ public class Entity{
           ring_one.init_ring(init[1], init[2], welc[4], welc[3], welc[2], welc[1]);
           Inet4Address self_address = (Inet4Address) InetAddress.getByName(Entity.getAddress());
           debug.display("Self address : "+self_address);
-          conf = "NEWC "+ring_one.getUdpIn()+" "+formatAddress(self_address);
+          conf = "NEWC "+formatAddress(self_address)+" "+ring_one.getUdpIn();
   				pw.println(conf);
   				pw.flush();
         } else {
@@ -550,7 +584,7 @@ public class Entity{
             //debug.display(st);
             String[] parts = st.split(" ", 8);
             String idm_received = parts[1];
-            if(parts[0].equals("APPL")){
+            if(parts[0].trim().equals("APPL")){
               Appli appli_received = appliOf(parts[2].replaceAll("#", ""));
               //les if servent à savoir si les messages sont à l'attention de l'entité
               //s'ils faut les traiter ou juste les faire suivre à l'anneau
@@ -584,6 +618,7 @@ public class Entity{
                     String idtrans = randomId();
                     String nummess = getNbMessFile(filename);
                     String answer = "APPL "+idm+" TRANS### ROK "+idtrans+" "+formatInt(filename.trim().length(), 2)+" "+filename+" "+nummess;
+                    ring_one.getMessageList().add(idm);
                     DatagramSocket dso=new DatagramSocket();
                     byte[] data = new byte[512];
                     data = answer.getBytes();
@@ -616,7 +651,41 @@ public class Entity{
                   }
                 }
               } else if(appli_received==Appli.DICO){
-                debug.display("Dico received");
+                if(appli_active==appli_received && parts[3].equals("ROK") && parts[4].equals(id_dico)){
+                  parts = st.split(" ", 7);
+                  System.out.println("Definition : "+parts[6].trim());
+                  appli_active = Appli.NONE;
+                  mot_recherche = "";
+                  id_dico = "";
+                }
+                if(parts[3].equals("REQ")){
+                  if(appli_active==appli_received && id_dico.equals(parts[6].trim())){
+                    debug.display("Word not found");
+                    appli_active = Appli.NONE;
+                    mot_recherche = "";
+                    id_dico = "";
+                  }
+                  if(dictionnaire.containsKey(parts[5])) {
+                    String def = dictionnaire.get(parts[5]);
+                    String idm = randomId();
+                    ring_one.getMessageList().add(idm);
+                    String answer = "APPL "+idm+" DICO### ROK "+parts[6].trim()+" "+def.length()+" "+def;
+                    DatagramSocket dso=new DatagramSocket();
+                    byte[] data = new byte[512];
+                    data = answer.getBytes();
+                    InetSocketAddress ia = new InetSocketAddress(ring_one.getAddressNext(), ring_one.getUdpNext());
+                    DatagramPacket paquet = new DatagramPacket(data, data.length, ia);
+                    dso.send(paquet);
+                    if(ring_two.isInitiated()) {
+                      ring_two.getMessageList().add(idm);
+                      paquet = new DatagramPacket(data,data.length,
+                      ring_two.getAddressNext(), ring_two.getUdpNext());
+                      dso.send(paquet);
+                    }
+                    dso.close();
+                    passMessage = false;
+                  }
+                }
               }
             } else {
               switch(parts[0]){
@@ -634,8 +703,11 @@ public class Entity{
                   passMessage = true;
                   break;
                 case "EYBG":
-                  if(appli_active==Appli.GBYE){
-                    System.exit(0);
+                  if(isQuitting){
+                    countEYBG++;
+                    if((ring_two.isInitiated() && countEYBG==2)||(!ring_two.isInitiated() && countEYBG==1)){
+                      System.exit(0);        
+                    }
                   }
                   passMessage = false;
                   break;
@@ -725,7 +797,7 @@ public class Entity{
             String s = comBR.readLine();
             //debug.display(s);
             String idm = "";
-            String [] parts = s.split(" ", 6);
+            String [] parts = s.split(" ", 7);
             if(parts[0].equals("GEST")){
               switch(parts[1].trim()){
                 case "WHOS":
@@ -735,22 +807,20 @@ public class Entity{
                   break;
                 case "GBYE":
                   if(parts[2].trim().equals("1")){
-                    idm = sendGbye(ring_one, debug);
+                    idm = sendGbye(ring_one, ring_two, debug);
                     ring_one.getMessageList().add(idm);
-                  } else {
-                    idm = sendGbye(ring_two, debug);
                     ring_two.getMessageList().add(idm);
                   }
-                  appli_active = Appli.GBYE;
+                  isQuitting = true;
                   break;
                 case "TEST":
                   debug.display("TEST");
                   System.out.println(parts[2].trim().equals("1"));
                   if(parts[2].trim().equals("1")){
-                    test = new TestInfo(ring_one, debug);
+                    test = new TestInfo(ring_one, udp_emergency, debug);
                      sendTest(ring_one, debug);
                   } else {
-                    test = new TestInfo(ring_two, debug);
+                    test = new TestInfo(ring_two, udp_emergency_two, debug);
                     sendTest(ring_two, debug);
                   }
                   break;
@@ -764,6 +834,11 @@ public class Entity{
               if(appli_active==Appli.TRANS){
                 debug.display("Create TransInfo");
                 trans = new TransInfo(parts[5].trim());
+              }
+              if(appli_active==Appli.DICO){
+                debug.display("Save word");
+                mot_recherche = parts[5];
+                id_dico = parts[6].trim();
               }
               //envoie du paquet en udp
               ring_one.getMessageList().add(idm_received);
