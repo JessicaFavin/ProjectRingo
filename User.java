@@ -110,7 +110,7 @@ public class User{
 					//sends message to be diffused to the ring
 					pw.print(res);
 					pw.flush();
-					System.out.println(res);
+					//System.out.println(res);
 					pw.close();
 					sock.close();
 				}

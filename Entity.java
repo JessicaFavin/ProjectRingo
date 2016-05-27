@@ -697,7 +697,8 @@ public class Entity{
                   }
                 }
               } else if (appli_received==Appli.DATE || appli_received==Appli.DIFF){
-                System.out.println(parts[5].trim());
+                parts = st.split(" ", 5);
+                System.out.println(parts[4].trim());
               }
             } else {
               switch(parts[0]){
