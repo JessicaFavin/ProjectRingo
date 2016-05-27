@@ -7,7 +7,8 @@ import java.util.Scanner;
 public class Trans{
 
   private static String randomId(){
-     String uuid = UUID.randomUUID().toString().subString(0,8);
+     String uuid = UUID.randomUUID().toString().substring(0,8);
+     return uuid;
   }
 
   private static String formatInt(int i, int max) throws Exception{
@@ -30,7 +31,7 @@ public class Trans{
       String response = sc.nextLine();
       //construction du message de l'application
       String[] parts = response.split(" ", 3);
-      int idm = randomId();
+      String idm = randomId();
       String mess = "APPl "+idm+" TRANS### REQ "+formatInt(parts[2].length(),2)+" "+parts[2];
       System.out.println(mess);
 

@@ -12,6 +12,7 @@ public class RingInfo{
   private int udp_next;
   private Inet4Address address_next;
   private ArrayList<String> message_list;
+  private Inet4Address self_address;
   private boolean initiated;
 
   public RingInfo(){
@@ -30,18 +31,6 @@ public class RingInfo{
     }
   }
 
-  public void init_ring(int udp_in, int tcp_in, int udp_mult,
-  Inet4Address address_mult, int udp_next, Inet4Address address_next){
-    this.udp_in = udp_in;
-    this.tcp_in = tcp_in;
-    this.udp_mult = udp_mult;
-    this.address_mult = address_mult;
-    this.udp_next = udp_next;
-    this.address_next = address_next;
-    this.message_list = new ArrayList<String>();
-    this.initiated = true;
-  }
-
   public void init_ring(String udp_in, String tcp_in, String udp_mult,
   String address_mult, String udp_next, String address_next){
     try{
@@ -52,6 +41,7 @@ public class RingInfo{
       this.udp_next = Integer.valueOf(udp_next);
       this.address_next = (Inet4Address) InetAddress.getByName(address_next);
       this.message_list = new ArrayList<String>();
+      this.self_address = (Inet4Address) InetAddress.getByName(Entity.getAddress());
       this.initiated = true;
     } catch (Exception e){
       System.out.println(e);
@@ -70,6 +60,7 @@ public class RingInfo{
       this.udp_next = this.udp_in;
       this.address_next = (Inet4Address) InetAddress.getByName(Entity.getAddress());
       this.message_list = new ArrayList<String>();
+      this.self_address = (Inet4Address) InetAddress.getByName(Entity.getAddress());
       this.initiated = true;
     } catch (Exception e){
       System.out.println(e);
@@ -121,6 +112,9 @@ public class RingInfo{
     }
   }
 
+  public Inet4Address getSelfAddress(){
+    return self_address;
+  }
 
   public ArrayList<String> getMessageList(){
     return message_list;

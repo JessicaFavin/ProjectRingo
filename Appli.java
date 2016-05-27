@@ -1,7 +1,7 @@
 public enum Appli{
   TRANS,
   DIFF,
-  PENDU,
-  GEST,
+  DICO,
+  GBYE,
   NONE
 }

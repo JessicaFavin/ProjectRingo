@@ -4,7 +4,7 @@ import java.util.*;
 import java.util.UUID;
 import java.util.Scanner;
 
-public class Diff{
+public class Dico{
 
   private static String randomId(){
      String uuid = UUID.randomUUID().toString().substring(0,8);
@@ -26,13 +26,13 @@ public class Diff{
 
   public static void main(String[] args) {
     try {
-      System.out.println("entity_address entity_TCP_port message_to_be_transferred");
+      System.out.println("entity_address entity_TCP_port word_to_be_defined");
       Scanner sc = new Scanner(System.in);
       String response = sc.nextLine();
       //construction du message de l'application
       String[] parts = response.split(" ", 3);
       String idm = randomId();
-      String mess = "APPl "+idm+" DIFF### "+formatInt(parts[2].length(),2)+" "+parts[2];
+      String mess = "APPl "+idm+" DICO### REQ "+formatInt(parts[2].length(),2)+" "+parts[2];
       System.out.println(mess);
       //connexion au serveur TCP de l'entité
       Inet4Address entity_address = (Inet4Address) InetAddress.getByName(parts[0]);;
