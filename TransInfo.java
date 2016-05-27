@@ -57,7 +57,6 @@ public class TransInfo{
 
 	public void insert_message(ByteBuffer buff, Debug debug) throws Exception {
 		String mess = new String(buff.array(),0,buff.array().length);
-		//debug.display(mess);
 		String[] parts = mess.split(" ", 8);
 		if(checkFormatSEN(parts)){
 			int i = Integer.valueOf(parts[5]);

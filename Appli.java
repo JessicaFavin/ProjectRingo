@@ -3,5 +3,6 @@ public enum Appli{
   DIFF,
   DICO,
   GBYE,
+  DATE,
   NONE
 }

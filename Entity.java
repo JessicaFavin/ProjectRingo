@@ -182,7 +182,6 @@ public class Entity{
     if(!ring.isInitiated()){
       return;
     }
-    debug.display("Start sending test");
     try{
       String idm = randomId();
       Inet4Address ip_diff = ring.getAddressMult();
@@ -210,7 +209,7 @@ public class Entity{
     File f = new File(current+"/shared/"+(filename.trim()));
     if(f==null){
     }else{
-      if(f.exists()) {
+      if(f.exists() && f.isFile()) {
         return true;
       }
     }
@@ -277,6 +276,10 @@ public class Entity{
       return Appli.TRANS;
     } else if(appli.equals("DIFF")) {
       return Appli.DIFF;
+    }else if(appli.equals("DATE")) {
+      return Appli.DATE;
+    } else if(appli.equals("GBYE")) {
+      return Appli.GBYE;
     } else if(appli.equals("DICO")) {
       return Appli.DICO;
     }
@@ -342,7 +345,6 @@ public class Entity{
       }
       String welc = "WELC "+formatAddress(ring_one.getAddressNext())+" "+ring_one.getUdpNext()
         +" "+formatAddress(ring_one.getAddressMult())+" "+ring_one.getUdpMult();
-      //debug.display(welc);
       comPW.println(welc);
       comPW.flush();
       String st = comBR.readLine();
@@ -353,8 +355,6 @@ public class Entity{
         comPW.flush();
         debug.display("Entity inserted");
       } else if(parts[0].equals("DUPL")) {
-         
-        debug.display("Message reçu : "+st);
         //init_ring(String udp_in, String tcp_in, String udp_mult,String address_mult, String udp_next, String address_next)
         ring_two.init_ring(Integer.toString(ring_one.getUdpIn()), Integer.toString(ring_one.getTcpIn()), parts[4].trim(), parts[3], parts[2], parts[1]);
         //new udp_mult to initialize!
@@ -388,6 +388,12 @@ public class Entity{
         return "TRANS";
       case DICO:
         return "DICO";
+      case DIFF:
+        return "DIFF";
+      case DATE:
+        return "DATE";
+      case GBYE:
+        return "GBYE";
       case NONE:
         return "NONE";
       default:
@@ -453,8 +459,7 @@ public class Entity{
         ring_one.init_self_ring(init[1], init[2], init[4], init[3]);
         appli_TCP =  Integer.valueOf(init[5]);
         Inet4Address self_address = ring_one.getAddressNext();
-        debug.display("Self address : "+self_address);
-        System.out.println("All infos received. Creating the ring now!");
+        debug.display("All infos received. Creating the ring now!");
       } else if(init[0].equals("J")&&init.length==6){
         InetAddress entity_address = (Inet4Address) InetAddress.getByName(init[3]);
         int entity_TCP = Integer.valueOf(init[4]);
@@ -472,11 +477,9 @@ public class Entity{
           System.out.println("Ring full.");
           System.exit(0);
         } if(welc[0].equals("WELC")&&welc.length==5){
-          debug.display(welc[1]+" "+welc[2]);
           //init ring
           ring_one.init_ring(init[1], init[2], welc[4], welc[3], welc[2], welc[1]);
           Inet4Address self_address = (Inet4Address) InetAddress.getByName(Entity.getAddress());
-          debug.display("Self address : "+self_address);
           conf = "NEWC "+formatAddress(self_address)+" "+ring_one.getUdpIn();
   				pw.println(conf);
   				pw.flush();
@@ -486,10 +489,10 @@ public class Entity{
         }
 				conf = br.readLine();
 				if(!conf.equals("ACKC")){
-					System.out.println("The other one is acting weird on ACK. I'm out of here!");
+					System.out.println("The other one is acting weird on ACKC. I'm out of here!");
 					System.exit(1);
 				}
-        System.out.println("All good. Entering the ring now!");
+        debug.display("All good. Entering the ring now!");
 				pw.close();
 				br.close();
 				tmp_sock.close();
@@ -516,7 +519,6 @@ public class Entity{
           Inet4Address self_address = (Inet4Address) InetAddress.getByName(Entity.getAddress());
           Inet4Address second_addr_mult = (Inet4Address) InetAddress.getByName(init[6]);
           int second_port_mult = Integer.valueOf(init[7]);
-          debug.display("Self address : "+self_address);
           conf = "DUPL "+formatAddress(self_address)+" "+ring_one.getUdpIn()+" "+formatAddress(second_addr_mult)+" "+formatInt(second_port_mult,4);
           pw.println(conf);
           pw.flush();
@@ -529,7 +531,7 @@ public class Entity{
           System.out.println("The other one is acting weird on ACKD. I'm out of here!");
           System.exit(1);
         }
-        System.out.println("All good. Entering the ring now!");
+        debug.display("All good. Entering the ring now!");
         pw.close();
         br.close();
         tmp_sock.close();
@@ -537,6 +539,8 @@ public class Entity{
         System.out.println("This is not a choice start over!");
         System.exit(0);
       }
+      System.out.println("My address is : "+formatAddress(getAddress()));
+      System.out.println("My application port is : "+formatInt(appli_TCP, 4));
 
       //create selector
       Selector sel=Selector.open();
@@ -586,7 +590,6 @@ public class Entity{
             boolean passMessage = true;
             udp_in.receive(buff);
             String st = new String(buff.array(),0,buff.array().length);
-            //debug.display(st);
             String[] parts = st.split(" ", 8);
             String idm_received = parts[1];
             if(parts[0].trim().equals("APPL")){
@@ -596,8 +599,9 @@ public class Entity{
               if(appli_received==Appli.TRANS){
                 if(appli_received == appli_active){
                   if (parts[3].equals("REQ") && ring_one.getMessageList().contains(idm_received)){
-                    debug.display("File not found in the ring.");
+                    System.out.println("File not found in the ring.");
                     appli_active = Appli.NONE;
+                    trans = null;
                     //pas besoin de le supprimer car cas traité dans la boucle if(passMessage)
                   }
                   if(parts[3].equals("ROK") && parts[6].trim().equals(trans.getFilename())){
@@ -612,6 +616,7 @@ public class Entity{
                       trans.copy_file(debug);
                       trans = null;
                       appli_active = Appli.NONE;
+                      System.out.println("File saved to received directory.");
                     }
                     passMessage = false;
                   }
@@ -634,12 +639,11 @@ public class Entity{
                     Path path = Paths.get("./shared/"+(filename.trim()));
                     byte[] fileArray = Files.readAllBytes(path);
                     //----------------------sends bytes to client-------------------------
-                    debug.display("Send messages");
+                    debug.display("Sending messages");
                     int count = 0;
                     for(int i=0; i<fileArray.length; i=i+463){
                       idm = randomId();
                       //copy of range doesn't take the last caracter
-                      debug.display(Integer.toString(count));
                       byte[] sub = null;
                       if(count == (Integer.valueOf(nummess)-1)){
                         sub = Arrays.copyOfRange(fileArray, i, fileArray.length);
@@ -652,6 +656,7 @@ public class Entity{
                       dso.send(paquet);
                       count++;
                     }
+                    debug.display("File sent");
                     dso.close();
                   }
                 }
@@ -665,7 +670,7 @@ public class Entity{
                 }
                 if(parts[3].equals("REQ")){
                   if(appli_active==appli_received && id_dico.equals(parts[6].trim())){
-                    debug.display("Word not found");
+                    System.out.println("Word not found");
                     appli_active = Appli.NONE;
                     mot_recherche = "";
                     id_dico = "";
@@ -691,6 +696,8 @@ public class Entity{
                     passMessage = false;
                   }
                 }
+              } else if (appli_received==Appli.DATE || appli_received==Appli.DIFF){
+                System.out.println(parts[5].trim());
               }
             } else {
               switch(parts[0]){
@@ -709,7 +716,7 @@ public class Entity{
                   break;
                 case "EYBG":
                   if(isQuitting){
-                    System.out.println("EYBG received");
+                    debug.display("EYBG received");
                     countEYBG--;
                     if(countEYBG == 1 || countEYBG == 0){
                       System.out.println("Good bye.");
@@ -728,7 +735,6 @@ public class Entity{
             if(passMessage) {
               //si le message n'est pas déjà passé par ici - ie this est l'expediteur
               if(!ring_one.getMessageList().contains(idm_received)){
-                debug.display("Message reçu : "+st);
                 //envoie du paquet en udp
                 ring_one.getMessageList().add(idm_received);
                 DatagramSocket dso=new DatagramSocket();
@@ -772,9 +778,8 @@ public class Entity{
             System.out.println("Emergency_UDP ring 1 recu");
             udp_emergency.receive(buff);
             String st=new String(buff.array(),0,buff.array().length);
-            debug.display(st);
             if(st.trim().equals("DOWN")){
-              debug.display("Ring 1 down.");
+              System.out.println("Ring 1 down.");
               if(ring_two.isInitiated()){
                 debug.display("Swapping Ring 2 and Ring 1 and killing it.");
                 ring_one = ring_two;
@@ -802,7 +807,6 @@ public class Entity{
             debug.display("Application connected!");
             //reads initial message and sends it to the ring
             String s = comBR.readLine();
-            //debug.display(s);
             String idm = "";
             String [] parts = s.split(" ", 7);
             if(parts[0].equals("GEST")){
@@ -825,7 +829,6 @@ public class Entity{
                   break;
                 case "TEST":
                   debug.display("TEST");
-                  System.out.println(parts[2].trim().equals("1"));
                   if(parts[2].trim().equals("1")){
                     test = new TestInfo(ring_one, udp_emergency, debug);
                      sendTest(ring_one, debug);
@@ -873,13 +876,11 @@ public class Entity{
             comBR.close();
   					comPW.close();
   					comSock.close();
-          } else if(ring_two.isInitiated() && sk.isReadable() && sk.channel()==udp_emergency_two){
-            System.out.println("Emergency_UDP ring 2 recu");
+          } else if(sk.isReadable() && sk.channel()==udp_emergency_two){
             udp_emergency_two.receive(buff);
             String st=new String(buff.array(),0,buff.array().length);
-            debug.display(st);
             if(st.trim().equals("DOWN")){
-              debug.display("Ring 2 down. Killing Ring 2");
+              System.out.println("Ring 2 down. Killing Ring 2");
               ring_two = new RingInfo();
             }
           } else {
